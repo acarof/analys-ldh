@@ -72,3 +72,25 @@ class Traj(object):
                 dens_zs[self.atoms[iatom]][pp] += 1
         self.dens_zs = dens_zs
 
+
+    def determine_xy_density(self, vect, binwidth):
+        vect = np.array(vect)
+        dens_xys = {}
+        nbins = [int(x/binwidth) for x in vect]
+        self.bins_xy = np.meshgrid(*(binwidth*np.array(range(n)) for n in nbins))
+        for atom in self.set_atoms:
+            dens_xys[atom] = np.zeros([n for n in nbins])
+        for iatom in range(self.natoms):
+            pos = self.positions[:,iatom, 0:2]
+            pos = pos - vect * np.rint(pos/vect)
+            #print pos[0]
+            #print pos[0]/binwidth
+            #print np.rint(pos[0]/binwidth)
+            pos = np.rint(pos / binwidth).astype(int)
+            #print pos[0]
+            for pp in pos:
+                #print 'pp',pp
+                dens_xys[self.atoms[iatom]][pp[0], pp[1]] += 1
+                #print dens_xys[self.atoms[iatom]]
+                #stop
+        self.dens_xys = dens_xys
