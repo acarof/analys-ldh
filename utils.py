@@ -15,7 +15,9 @@ class Traj(object):
         self.natoms = 0
         self.mass = 28
         self.is_read = False
+        self.is_unitcell = False
         self.title = title
+        self.bins = {}
 
     def read_traj_amber(self, crd = '', top = '' ):
         if self.is_read:
@@ -57,6 +59,39 @@ class Traj(object):
             self.forces = np.zeros((self.steps, self.natoms, 3))
             for step in range(self.steps):
                 self.positions[step] = f.variables['coordinates'][step]
+
+    def wrap_unitcell(self, unitcell):
+        istep = 0
+        iatom = 1
+        print self.positions[istep, iatom, :].shape
+        print np.sqrt(np.sum(np.power(unitcell, 2), 0))
+        print unitcell.T.dot(self.positions[istep, iatom, :]).T.shape
+        shift = np.rint(np.dot(unitcell.T,  self.positions[istep, iatom, :]) / np.sum(np.power(unitcell, 2), 0))[0]
+        print shift.shape
+        print self.positions[istep, iatom, :] - unitcell.T.dot( (np.rint(np.dot(unitcell.T,  self.positions[istep, iatom, :]) / np.sum(np.power(unitcell, 2), 0))).T)
+
+    def determine_xyz_density(self, unitcell, binwidth):
+        self.wrap_unitcell(unitcell)
+        self.dens = {}
+        self.dens['z'] = {}
+        self.dens['xy'] = {}
+        distz = np.dot(unitcell[2], np.array([0,0,1]))
+        nbins = int(distz/binwidth)
+        self.bins['z'] = binwidth*np.array(range(nbins))
+        for atom in self.set_atoms:
+            self.dens['z'][atom] = np.zeros(nbins)
+        vect = np.diag(unitcell[0:1,0:1])
+        nbins = [int(x/binwidth) for x in vect]
+        self.bins['xy'] = np.meshgrid(*(binwidth*np.array(range(n)) for n in nbins))
+        for atom in self.set_atoms:
+            self.dens['xy'][atom] = np.zeros([n for n in nbins])
+        for iatom in range(self.natoms):
+            pos = self.positions_unitcell[:,iatom,:]
+            pos = np.rint(pos/binwidth).astype(int)
+            for pp in pos:
+                self.dens['xy'][self.atoms[iatom]][pp[0], pp[1]]  += 1
+                self.dens['z'][self.atoms[iatom]][pp[2]] += 1
+
 
     def determine_z_density(self, dist, binwidth):
         dens_zs = {}
