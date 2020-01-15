@@ -61,14 +61,8 @@ class Traj(object):
                 self.positions[step] = f.variables['coordinates'][step]
 
     def wrap_unitcell(self, unitcell):
-        istep = 0
-        iatom = 1
-        print self.positions[istep, iatom, :].shape
-        print np.sqrt(np.sum(np.power(unitcell, 2), 0))
-        print unitcell.T.dot(self.positions[istep, iatom, :]).T.shape
-        shift = np.rint(np.dot(unitcell.T,  self.positions[istep, iatom, :]) / np.sum(np.power(unitcell, 2), 0))[0]
-        print shift.shape
-        print self.positions[istep, iatom, :] - unitcell.T.dot( (np.rint(np.dot(unitcell.T,  self.positions[istep, iatom, :]) / np.sum(np.power(unitcell, 2), 0))).T)
+        shift = np.rint( self.positions.dot(unitcell) / np.sum(np.power(unitcell, 2), 0))
+        self.positions_unitcell = self.positions - shift.dot(unitcell)
 
     def determine_xyz_density(self, unitcell, binwidth):
         self.wrap_unitcell(unitcell)
@@ -80,7 +74,8 @@ class Traj(object):
         self.bins['z'] = binwidth*np.array(range(nbins))
         for atom in self.set_atoms:
             self.dens['z'][atom] = np.zeros(nbins)
-        vect = np.diag(unitcell[0:1,0:1])
+        vect = np.diag(unitcell[0:2,0:2])
+        print vect
         nbins = [int(x/binwidth) for x in vect]
         self.bins['xy'] = np.meshgrid(*(binwidth*np.array(range(n)) for n in nbins))
         for atom in self.set_atoms:
@@ -129,3 +124,14 @@ class Traj(object):
                 #print dens_xys[self.atoms[iatom]]
                 #stop
         self.dens_xys = dens_xys
+
+def write_map(path, map_):
+    with open(path, 'w') as f:
+        for line in map_:
+            f.write('%s\n' % ' '.join(map(str, line)))
+
+def write_function_z(path, bins, values):
+    with open(path, 'w') as f:
+         f.write('Z   F\n')
+         for r, value in zip(bins, values):
+             f.write('%s    %s\n' % (r, value))
